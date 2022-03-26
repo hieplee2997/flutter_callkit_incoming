@@ -34,6 +34,8 @@ import com.squareup.picasso.OkHttp3Downloader
 import com.squareup.picasso.Picasso
 import com.squareup.picasso.Target
 import okhttp3.OkHttpClient
+import android.os.PowerManager
+import android.os.PowerManager.WakeLock
 
 
 class CallkitNotificationManager(private val context: Context) {
@@ -70,7 +72,17 @@ class CallkitNotificationManager(private val context: Context) {
         override fun onPrepareLoad(placeHolderDrawable: Drawable?) {
         }
     }
+    
 
+    private fun wakeLockRequest(duration: Long) {
+
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val wakeLock = pm.newWakeLock(
+            PowerManager.SCREEN_BRIGHT_WAKE_LOCK or PowerManager.FULL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP,
+            "Callkit:PowerManager"
+        )
+        wakeLock.acquire(duration)
+    }
 
     fun showIncomingNotification(data: Bundle) {
         data.putLong(EXTRA_TIME_START_CALL, System.currentTimeMillis())
@@ -92,10 +104,11 @@ class CallkitNotificationManager(private val context: Context) {
         notificationBuilder.setTimeoutAfter(data.getLong(EXTRA_CALLKIT_DURATION, 0L))
         notificationBuilder.setOnlyAlertOnce(true)
         notificationBuilder.setSound(null)
-        notificationBuilder.setFullScreenIntent(
-                getActivityPendingIntent(notificationId, data), true
-        )
-        notificationBuilder.setContentIntent(getActivityPendingIntent(notificationId, data))
+
+        // notificationBuilder.setFullScreenIntent(
+        //         getActivityPendingIntent(notificationId, data), true
+        // )
+        notificationBuilder.setContentIntent(getAcceptPendingIntent(notificationId, data))
         val typeCall = data.getInt(EXTRA_CALLKIT_TYPE, -1)
         var smallIcon = context.applicationInfo.icon
         if (typeCall > 0) {
@@ -172,6 +185,8 @@ class CallkitNotificationManager(private val context: Context) {
             ).build()
             notificationBuilder.addAction(acceptAction)
         }
+        val duration = data?.getLong(EXTRA_CALLKIT_DURATION, 0L) ?: 0L
+        wakeLockRequest(duration)
         val notification = notificationBuilder.build()
         notification.flags = Notification.FLAG_INSISTENT
         getNotificationManager().notify(notificationId, notification)
@@ -226,7 +241,7 @@ class CallkitNotificationManager(private val context: Context) {
             }
             notificationBuilder.setStyle(NotificationCompat.DecoratedCustomViewStyle())
             notificationBuilder.setCustomContentView(notificationViews)
-            notificationBuilder.setCustomBigContentView(notificationViews)
+            // notificationBuilder.setCustomBigContentView(notificationViews)
         } else {
             notificationBuilder.setContentTitle(data.getString(EXTRA_CALLKIT_NAME_CALLER, ""))
             notificationBuilder.setContentText(data.getString(EXTRA_CALLKIT_HANDLE, ""))
